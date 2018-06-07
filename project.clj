@@ -16,12 +16,12 @@
                  [javax.servlet/javax.servlet-api "3.1.0" :scope "test"]
                  [org.slf4j/slf4j-nop "1.7.25" :scope "test"]]
   :deploy-repositories [["releases" :clojars {:creds :gpg}]]
-  :repositories [["releases" {:url "https://yaven.yetanalytics.io/repository/releases"
-                              :username [:gpg :env/yaven_user]
-                              :password [:gpg :env/yaven_pass]}]
-                 ["snapshots" {:url "https://yaven.yetanalytics.io/repository/snapshots"
-                               :username [:gpg :env/yaven_user]
-                               :password [:gpg :env/yaven_pass]}]]
+  :repositories [["yet-releases" {:url "https://yaven.yetanalytics.io/repository/releases"
+                                  :username [:gpg :env/yaven_user]
+                                  :password [:gpg :env/yaven_pass]}]
+                 ["yet-snapshots" {:url "https://yaven.yetanalytics.io/repository/snapshots"
+                                   :username [:gpg :env/yaven_user]
+                                   :password [:gpg :env/yaven_pass]}]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}}
   :aliases {"all" ["with-profile" "dev,1.7:dev"]})
