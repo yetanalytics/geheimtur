@@ -2,7 +2,8 @@
   (:require [clojure.test :refer :all]
             [geheimtur.impl.oauth2 :refer :all]
             [geheimtur.util.auth :as auth]
-            [geheimtur.util.url :refer [get-query]])
+            [geheimtur.util.url :refer [get-query]]
+            [geheimtur.util.response :as response])
   (:import [java.net URL]))
 
 (def providers
@@ -34,7 +35,6 @@
           m (handler {:request {:query-params {:provider "github" :return "/return"}}})
           location (-> m :response :headers (get "Location"))]
       (is (re-find #"foo=bar" location))))
-  
   (testing "Successfuly redirects and stores state in the session"
     (let [{handler :enter} (authenticate-handler providers)
           {response :response}         (handler {:request {:query-params {:provider "github" :return "/return"}}})
@@ -192,4 +192,15 @@
                                                                                     :success))))]
         (with-redefs-fn {#'geheimtur.impl.oauth2/process-callback
                          (fn [code provider] {:access-token "token-token"})}
-          #(is (= :success (:response (handler request)))))))))
+          #(is (= :success (:response (handler request)))))))
+
+    (testing "Failure with custom :on-failure-handler"
+      (let [{handler :enter}
+            (callback-handler
+             (assoc-in providers [:github :on-failure-handler] (fn [ctx]
+                                                                 (println ctx)
+                                                                 (response/redirect "/really_unauthorized"))))
+            {response :response} (handler {:request {:session {::geheimtur.impl.oauth2/callback-state
+                                                               {:provider "github"}}}})]
+        (is (= 302 (:status response)))
+        (is (= "/really_unauthorized" (get-in response [:headers "Location"])))))))

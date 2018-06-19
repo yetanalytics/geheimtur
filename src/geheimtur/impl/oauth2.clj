@@ -35,7 +35,8 @@
                  :token-parse-fn     (fn [resp] (parse-string (:body resp)))
                  :user-info-url      \"https://api.github.com/user\"
                  :user-info-parse-fn (fn [resp] (parse-string (:body resp)))
-                 :on-success-handler on-github-success}})
+                 :on-success-handler on-github-success
+                 :on-failure-handler on-github-failure}})
 
   The following keys in provider's configuration are optional:
       :client-params      - a map of extra query parameters to be included in the authorization request
@@ -44,7 +45,9 @@
       :user-info-url      - if defined, will be used to get user's details after successful access token acquisition
       :user-info-parse-fn - if defined, will be applied to the response of user's details endpoint
       :on-success-handler - a function that accepts a request context and an obtained identity/access token map and returns a correct ring response.
-                            It is called only if an identity/access token is resolved."
+                            It is called only if an identity/access token is resolved.
+      :on-failure-handler - a function that accepts a request context for which an identity/access token map cannot be resolved.
+                            If not provided, response/redirect will be used."
   [providers]
   (h/handler
    ::authenticate-handler
@@ -132,6 +135,10 @@
   (when-let [token (fetch-token code provider)]
     (resolve-identity token provider)))
 
+(defn- default-on-failure-handler
+  [_]
+  (response/redirect "/unauthorized"))
+
 (defn callback-handler
   "Creates an OAuth call-back handler based on a map of OAuth providers.
 
@@ -143,12 +150,15 @@
      (let [{:keys [query-params session]}     request
            {:keys [state code]}               query-params
            {:keys [return token provider]}    (::callback-state session)
-           {:keys [on-success-handler] :as p} (get providers (keyword provider))]
+           {:keys [on-success-handler
+                   on-failure-handler]
+            :or {on-failure-handler
+                 default-on-failure-handler} :as p} (get providers (keyword provider))]
        (assoc context :response
-              (if (and state code return token provider (= state token) p)
-                (if-let [identity (process-callback code p)]
-                  (if on-success-handler
-                    (on-success-handler context (assoc identity :return return))
-                    (authenticate (response/redirect return) identity))
-                  (response/redirect "/unauthorized"))
-                (response/redirect "/unauthorized")))))))
+              (if-let [identity (and state code return token provider p
+                                     (= state token)
+                                     (process-callback code p))]
+                (if on-success-handler
+                  (on-success-handler context (assoc identity :return return))
+                  (authenticate (response/redirect return) identity))
+                (on-failure-handler context)))))))
