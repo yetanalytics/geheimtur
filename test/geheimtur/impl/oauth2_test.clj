@@ -198,7 +198,6 @@
       (let [{handler :enter}
             (callback-handler
              (assoc-in providers [:github :on-failure-handler] (fn [ctx]
-                                                                 (println ctx)
                                                                  (response/redirect "/really_unauthorized"))))
             {response :response} (handler {:request {:session {::geheimtur.impl.oauth2/callback-state
                                                                {:provider "github"}}}})]
